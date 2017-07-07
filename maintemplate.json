@@ -1,0 +1,601 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "instanceType": {
+      "type": "string",
+      "allowedValues": [
+        "Standard_A4",
+        "Standard_A5",
+        "Standard_A6",
+        "Standard_A7",
+        "Standard_A8",
+        "Standard_A9",
+        "Standard_D3",
+        "Standard_D4",
+        "Standard_D11",
+        "Standard_D12",
+        "Standard_D13",
+        "Standard_D14",
+        "Standard_D3_v2",
+        "Standard_D4_v2",
+        "Standard_D5_v2",
+        "Standard_D11_v2",
+        "Standard_D12_v2",
+        "Standard_D13_v2",
+        "Standard_D14_v2",
+        "Standard_D15_v2",
+        "Standard_F4",
+        "Standard_F8"
+      ],
+      "defaultValue": "Standard_D3_v2",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser",
+      "metadata": {
+        "description": "User name to login to the Web Application Firewall."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Password to login to the Web Application Firewall."
+      }
+    },
+    "licenseKey1": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the virtual network where the BIG-IP mgmt interface is connected."
+      }
+    },
+    "mgmtSubnetName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the subnet where the BIG-IP mgmt interface is connected."
+      }
+    },
+    "mgmtIP": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSubnetName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the subnet where the BIG-IP is connected to for data flow."
+      }
+    },
+    "defaultGw": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The default gateway IP address for data traffic"
+      }
+    },
+    "dataSelfIP1": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP2": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP3": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP4": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP5": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP6": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP7": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP8": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    },
+    "dataSelfIP9": {
+      "type": "string",
+      "defaultValue": "NOT_SPECIFIED",
+      "metadata": {
+        "description": "The license token for the first F5 BYOL instance, (if applicable)."
+      }
+    }
+  },
+  "variables": {
+    "location": "[resourceGroup().location]",
+    "bigIpVersion": "latest",
+    "baseUrl": "https://raw.githubusercontent.com/gregcoward/SingleInstance-MassiveVIPs/master",
+    "newStorageAccountName": "[concat(uniquestring(concat(resourceGroup().id, 'st')), 'st')]",
+    "diagStorageAccountName": "[concat(uniquestring(concat(resourceGroup().id, 'diag')), 'diag')]",
+    "f5NamePrefix": "bigip",
+    "apiVersionCompute": "2016-03-30",
+    "apiVersionNetwork": "2015-06-15",
+    "apiVersionStorage": "2015-06-15",
+    "apiVersionTemplate": "2015-01-01",
+    "mgmtSubnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('mgmtSubnetName'))]",
+    "dataSubnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('dataSubnetName'))]",
+    "nicNamePrefix": "[concat(variables('f5NamePrefix'),'-nic')]",
+    "availabilitySetName": "[concat(variables('f5NamePrefix'),'-as')]",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vnetName'))]",
+    "instanceTypeMap": {
+      "Standard_A3": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_A4": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_A5": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_A6": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_A7": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D3": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D4": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D11": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D12": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D13": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D14": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D2_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D3_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D4_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D5_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D11_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D12_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D13_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_D14_v2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_F2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_F4": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_G1": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_G2": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_G3": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_G4": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_G5": {
+        "storageAccountType": "Standard_LRS"
+      },
+      "Standard_DS1": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS3": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS4": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS11": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS12": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS13": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS14": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS1_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS2_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS3_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS4_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS5_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS11_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS12_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS13_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS14_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_DS15_v2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_GS1": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_GS2": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_GS3": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_GS4": {
+        "storageAccountType": "Premium_LRS"
+      },
+      "Standard_GS5": {
+        "storageAccountType": "Premium_LRS"
+      }
+    },
+    "runScripts": "runScripts.js",
+    "runScriptsUrl": "[concat(parameters('baseUrl'), '/', variables('runScripts'))]",
+    "singleQuote": "'",
+    "f5CloudLibsTag": "v.2.3.0",
+    "verifyHash": "[concat(variables('singleQuote'), 'cli script /Common/verifyHash {\nproc script::run {} {\n        if {[catch {\n            set hashes(f5-cloud-libs.tar.gz) 489d460d2e5fcd401ce12f19b1d753a6bee30483cd0bf2b7548b7f8fe3caf5b727af96f013733cbd08b0c109e0cf535a29288d473b84cc834369204d5be5edc9\n            set hashes(f5-cloud-libs-aws.tar.gz) 0b602d069a6647e8268c7afc5201259058c4df545cdee5212bf1f6c2d24b11421201282c11e047b1df9b144a012312de45a07fcf28bd0d8cd3d3a86698774925\n            set hashes(f5-cloud-libs-azure.tar.gz) 16d2ce2086883ed5b47a3ba4e79541fd1a4bb64513222cf3a459297c2474d0bfc71a161ba2b8571707e1a6b273badaaf2c847993d0e60a4b52cd8c62cb03aba6\n            set hashes(asm-policy-linux.tar.gz) 63b5c2a51ca09c43bd89af3773bbab87c71a6e7f6ad9410b229b4e0a1c483d46f1a9fff39d9944041b02ee9260724027414de592e99f4c2475415323e18a72e0\n            set hashes(f5.http.v1.2.0rc4.tmpl) 47c19a83ebfc7bd1e9e9c35f3424945ef8694aa437eedd17b6a387788d4db1396fefe445199b497064d76967b0d50238154190ca0bd73941298fc257df4dc034\n            set hashes(f5.http.v1.2.0rc6.tmpl) 811b14bffaab5ed0365f0106bb5ce5e4ec22385655ea3ac04de2a39bd9944f51e3714619dae7ca43662c956b5212228858f0592672a2579d4a87769186e2cbfe\n            set hashes(f5.http.v1.2.0rc7.tmpl) 21f413342e9a7a281a0f0e1301e745aa86af21a697d2e6fdc21dd279734936631e92f34bf1c2d2504c201f56ccd75c5c13baa2fe7653213689ec3c9e27dff77d\n            set hashes(f5.aws_advanced_ha.v1.3.0rc1.tmpl) 9e55149c010c1d395abdae3c3d2cb83ec13d31ed39424695e88680cf3ed5a013d626b326711d3d40ef2df46b72d414b4cb8e4f445ea0738dcbd25c4c843ac39d\n            set hashes(asm-policy.tar.gz) 2d39ec60d006d05d8a1567a1d8aae722419e8b062ad77d6d9a31652971e5e67bc4043d81671ba2a8b12dd229ea46d205144f75374ed4cae58cefa8f9ab6533e6\n            set hashes(deploy_waf.sh) 4db3176b45913a5e7ccf42ab9c7ac9d7de115cdbd030b9e735946f92456b6eb433087ed0e98ac4981c76d475cd38f4de49cd98c063e13d50328a270e5b3daa4a\n            set hashes(f5.policy_creator.tmpl) 54d265e0a573d3ae99864adf4e054b293644e48a54de1e19e8a6826aa32ab03bd04c7255fd9c980c3673e9cd326b0ced513665a91367add1866875e5ef3c4e3a\n\n            set file_path [lindex $tmsh::argv 1]\n            set file_name [file tail $file_path]\n\n            if {![info exists hashes($file_name)]} {\n                tmsh::log err \"No hash found for $file_name\"\n                exit 1\n            }\n\n            set expected_hash $hashes($file_name)\n            set computed_hash [lindex [exec /usr/bin/openssl dgst -r -sha512 $file_path] 0]\n            if { $expected_hash eq $computed_hash } {\n                exit 0\n            }\n            tmsh::log err \"Hash does not match for $file_path\"\n            exit 1\n        }]} {\n            tmsh::log err {Unexpected error in verifyHash}\n            exit 1\n        }\n    }\n    script-signature prKQi8FeX98kCcFaMwIdwgYADdAjZo6iNTnnckguwe5IVysTEVe4vR2HPLJlDzU25dU17sQvDNIX52K0VYN4LEkAuSMeMTmr2LnlRWcGEJ4YUo9lKMdKzMzJaznlScwaR4P5mEdJC0ygq8jinOIlkauLbqmAElNtxWpb+XLnR2R83vMl/y9/LGxCxrvqE3ZuXvyuKqpAlhS+AN5ZQBDFvlTgQi52KJWpw+3i7oalz5dsjbAs2gRARtZ57Pa8OD5Oz54Q1UDxuzPVNH+CY4vt93JKmduMBsT3F41RUFDmRzosjmBY/Ic9O7oLVlKwOusDeqqqlfOM5CxcVMXwB3oxxQ==\n    signing-key /Common/f5-irule\n}', variables('singleQuote'))]",
+    "installCloudLibs": "[concat(variables('singleQuote'), '#!/bin/bash\necho about to execute\nchecks=0\nwhile [ $checks -lt 120 ]; do echo checking mcpd\n/usr/bin/tmsh -a show sys mcp-state field-fmt | grep -q running\nif [ $? == 0 ]; then\necho mcpd ready\nbreak\nfi\necho mcpd not ready yet\nlet checks=checks+1\nsleep 1\ndone\necho loading verifyHash script\n/usr/bin/tmsh load sys config merge file /config/verifyHash\nif [ $? != 0 ]; then\necho cannot validate signature of /config/verifyHash\nexit\nfi\necho loaded verifyHash\necho verifying f5-cloud-libs.tar.gz\n/usr/bin/tmsh run cli script verifyHash /config/cloud/f5-cloud-libs.tar.gz\nif [ $? != 0 ]; then\necho f5-cloud-libs.tar.gz is not valid\nexit\nfi\necho verified f5-cloud-libs.tar.gz\necho expanding f5-cloud-libs.tar.gz\ntar xvfz /config/cloud/f5-cloud-libs.tar.gz -C /config/cloud\ntouch /config/cloud/cloudLibsReady', variables('singleQuote'))]",
+    "f5CloudLibsTagUrl": "[concat(parameters('baseUrl'),'/f5-cloud-libs/', variables('f5CloudLibsTag'), '/dist/f5-cloud-libs.tar.gz')]",
+    "defaultGw": "[concat(parameters('extIpAddress'),'1')]",
+  },
+  "resources": [
+    {
+      "name": "[variables('diagStorageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "StorageAccount"
+      },
+      "apiVersion": "[variables('apiVersionStorage')]",
+      "properties": {
+        "accountType": "[variables('instanceTypeMap')[parameters('instanceType')].storageAccountType]"
+      }
+    },
+    {
+      "name": "[variables('newStorageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "StorageAccount"
+      },
+      "apiVersion": "[variables('apiVersionStorage')]",
+      "properties": {
+        "accountType": "[variables('instanceTypeMap')[parameters('instanceType')].storageAccountType]"
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersionCompute')]",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "AvailabilitySet"
+      },
+      "name": "[variables('availabilitySetName')]",
+      "type": "Microsoft.Compute/availabilitySets"
+    },
+    {
+      "apiVersion": "[parameters('apiVersionNetwork')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicNamePrefix'),'-mgmt')]",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "dependsOn": [
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[parameters('mgmtIP')]",
+              "subnet": {
+                "id": "[variables('mgmtSubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersionNetwork')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicNamePrefix'),'-data')]",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "dependsOn": [
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP1')]",
+              "primary": true,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig2",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP2')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig3",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP3')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig4",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP4')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig5",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP5')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig6",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP6')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig7",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP7')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig8",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP8')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          },
+          {
+            "name": "ipconfig9",
+            "properties": {
+              "privateIPAllocationMethod": "static",
+              "privateIPAddress": "[parameters('dataSelfIP9')]",
+              "primary": false,
+              "subnet": {
+                "id": "[variables('extSubnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersionCompute')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(variables('f5NamePrefix'))]",
+      "location": "[variables('location')]",
+      "tags": {
+        "displayName": "VirtualMachine"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('newStorageAccountName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicNamePrefix'),'-mgmt')]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nicNamePrefix'),'-data')]"
+      ],
+      "plan": {
+        "name": "f5-bigip-virtual-edition-best-byol",
+        "publisher": "f5-networks",
+        "product": "f5-big-ip"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('instanceType')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(variables('f5NamePrefix'))]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "f5-networks",
+            "offer": "f5-big-ip",
+            "sku": "f5-bigip-virtual-edition-best-byol",
+            "version": "12.1.24"
+          },
+          "osDisk": {
+            "name": "[concat(variables('f5NamePrefix'),'osdisk')]",
+            "vhd": {
+              "uri": "[concat(concat(reference(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', variables('newStorageAccountName')), variables('apiVersionStorage')).primaryEndpoints['blob'], 'vhds/'), variables('f5NamePrefix'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[concat(resourceId('Microsoft.Network/networkInterfaces',variables('nicNamePrefix')),'-mgmt')]",
+              "properties": {
+                "primary": true
+              }
+            },
+            {
+              "id": "[concat(resourceId('Microsoft.Network/networkInterfaces',variables('nicNamePrefix')),'-data')]",
+              "properties": {
+                "primary": false
+              }
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', variables('diagStorageAccountName')), variables('apiVersionStorage')).primaryEndpoints['blob']]"
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('f5NamePrefix'),'/start')]",
+      "apiVersion": "[parameters('apiVersionCompute')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', concat(parameters('f5NamePrefix')))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "autoUpgradeMinorVersion": true,
+        "typeHandlerVersion": "2.0",
+        "settings": {
+          "fileUris": [
+            "[variables('f5CloudLibsTagUrl')]",
+            "[variables('runScriptsUrl')]"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "[concat('mkdir /config/cloud && cp f5-cloud-libs.tar.gz* /config/cloud; /usr/bin/install -b -m 755 /dev/null /config/verifyHash; /usr/bin/install -b -m 755 /dev/null /config/installCloudLibs.sh; /usr/bin/install -b -m 400 /dev/null /config/cloud/passwd; IFS=', variables('singleQuote'), '%', variables('singleQuote'), '; echo -e ', variables('verifyHash'), ' >> /config/verifyHash; echo -e ', variables('installCloudLibs'), ' >> /config/installCloudLibs.sh; echo ', variables('singleQuote'), parameters('adminPassword'), variables('singleQuote'), ' >> /config/cloud/passwd; unset IFS; bash /config/installCloudLibs.sh; /usr/bin/f5-rest-node /config/cloud/f5-cloud-libs/scripts/onboard.js --output /var/log/onboard.log --log-level debug --host ', concat(parameters('mgmtIpAddress'),'4'), ' --ssl-port ', '443', ' -u admin --password-url file:///config/cloud/passwd --hostname ', concat(parameters('f5namePrefix'),'.', resourceGroup().location, '.cloudapp.azure.com'),  ' --ntp pool.ntp.org --db tmm.maxremoteloglength:2048 --module ltm:nominal --module afm:none; f5-rest-node /config/cloud/f5-cloud-libs/scripts/network.js --output /var/log/network.log --host ', concat(parameters('mgmtIpAddress'),'4'), ' --port ', '443', ' -u admin --password-url file:///config/cloud/passwd --multi-nic --default-gw ', parameters('defaultGw'), ' --vlan mgmt_vlan,1.0 --vlan data_vlan,1.1 --self-ip mgmt_self,', parameters('mgmtIP'), ',mgmt_vlan --self-ip vip1_self,', parameters('dataSelfIP1'), ',data_vlan --self-ip vip2_self,', parameters('dataSelfIP2'), ',data_vlan --self-ip vip3_self,', parameters('dataSelfIP3'), ',data_vlan --self-ip vip4_self,', parameters('dataSelfIP4'), ',data_vlan --self-ip vip5_self,', parameters('dataSelfIP5'), ',data_vlan --self-ip vip16_self,', parameters('dataSelfIP6'), ',data_vlan --self-ip vip7_self,', parameters('dataSelfIP7'), ',data_vlan --self-ip vip8_self,', parameters('dataSelfIP8'), ',data_vlan --self-ip vip9_self,', parameters('dataSelfIP9'), ',data_vlan --log-level debug --force-reboot; rm -f /config/cloud/passwd')]"
+        }
+      }
+    }
+  ],
+    "outputs": {}
+  }
