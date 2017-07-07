@@ -53,6 +53,13 @@
         "description": "The license token for the first F5 BYOL instance, (if applicable)."
       }
     },
+    "vnetExistingRGName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the resource group where the existing VNET is located."
+      }
+    },
     "vnetName": {
       "type": "string",
       "defaultValue": "",
@@ -167,7 +174,7 @@
     "dataSubnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('dataSubnetName'))]",
     "nicNamePrefix": "[concat(variables('f5NamePrefix'),'-nic')]",
     "availabilitySetName": "[concat(variables('f5NamePrefix'),'-as')]",
-    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vnetName'))]",
+    "vnetID" : "[resourceId(parameters('vnetExistingRGName'),'Microsoft.Network/virtualNetworks',parameters('vnetName'))]",
     "instanceTypeMap": {
       "Standard_A3": {
         "storageAccountType": "Standard_LRS"
